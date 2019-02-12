@@ -62,11 +62,14 @@ class RemoveOutOfStockItem implements \Magento\Framework\Event\ObserverInterface
         /** @var \Magento\Quote\Model\Quote $quoteInfo */
         $quoteInfo = $this->checkoutSession->getQuote();
         $cartId = $quoteInfo->getId();
+        // Get all visible items in the cart
         $itemsInCart = $quoteInfo->getAllVisibleItems();
         $removals = false;
+        // Loop all items in the cart and check that item, if this item is out of stock then remove it from the cart.
         foreach ($itemsInCart as $item) {
             try {
                 $stockItem = $this->getStockItem($item->getProductId());
+                // If this item is out of stock then remove it
                 if (!$stockItem->getIsInStock()) {
                     $item->delete();
                     $removals = true;
@@ -74,13 +77,14 @@ class RemoveOutOfStockItem implements \Magento\Framework\Event\ObserverInterface
             } catch(\Exception $e) {}
         }
         // Collect total quote after removing items
+        // We must update the total quote, example: qty, price
         if ($removals) {
-            /** @var \Magento\Quote\Model\Quote $quote */
-            $quote = $this->quoteRepository->getActive($cartId);
-            $quote->getBillingAddress();
-            $quote->getShippingAddress()->setCollectShippingRates(true);
-            $quote->collectTotals();
             try {
+                /** @var \Magento\Quote\Model\Quote $quote */
+                $quote = $this->quoteRepository->getActive($cartId);
+                $quote->getBillingAddress();
+                $quote->getShippingAddress()->setCollectShippingRates(true);
+                $quote->collectTotals();
                 $this->quoteRepository->save($quote);
             } catch(\Exception $e) {}
         }
